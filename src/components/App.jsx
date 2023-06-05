@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import { useState, useEffect } from 'react';
 import { SearchBar } from './Searchbar/Searchbar';
 import { Notify } from 'notiflix/build/notiflix-notify-aio';
 import { ErrorMessage } from 'components/ErrorMessage/ErrorMessage';
@@ -12,86 +12,80 @@ import { AppStyle } from './App.styled';
 
 const perPage = 12;
 
-export class App extends Component {
-  state = {
-    page: 1,
-    query: '',
-    images: [],
-    isLoading: false,
-    isError: false,
-    isLoadMore: false,
-  };
+export const App = () => {
+  const [page, setPage] = useState(1);
+  const [searchQuery, setsearchQuery] = useState('');
+  const [images, setImages] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isError, setIsError] = useState(false);
+  const [isLoadMore, setIsLoadMore] = useState(false);
 
-  onSubmit = query => {
-    if (this.state.query === query) {
+  const onSubmit = query => {
+    if (searchQuery === query) {
       Notify.warning('images for this query are now shown');
       return;
     }
-    this.setState({
-      query,
-      page: 1,
-      images: [],
-      isLoading: true,
-      isLoadMore: false,
-    });
+    setsearchQuery(query);
+    setPage(1);
+    setImages([]);
+    setIsLoading(true);
+    setIsError(false);
   };
 
-  handleLoadMoreButton = () => {
-    this.setState(prevState => ({ page: prevState.page + 1 }));
+  const handleLoadMoreButton = () => {
+    setPage(prevState => prevState + 1);
 
     setTimeout(() => {
       smoothScroll();
     }, 500);
   };
 
-  async componentDidUpdate(_, prevState) {
-    try {
-      if (
-        prevState.query !== this.state.query ||
-        prevState.page !== this.state.page
-      ) {
-        const data = await getSearchImage(this.state.query, this.state.page);
+  useEffect(() => {
+    if (searchQuery === '') {
+      return;
+    }
+    const fetchImage = async () => {
+      try {
+        const data = await getSearchImage(searchQuery, page);
 
         if (data.hits.length === 0) {
           Notify.warning(
             'Sorry, there are no images matching your serach query, please try again'
           );
-          this.setState({ isLoading: false });
+          setIsLoading(false);
           return;
         }
 
-        this.setState(prevState => ({
-          images: [...prevState.images, ...data.hits],
-          isLoading: false,
-        }));
+        setImages(prevImages => [...prevImages, ...data.hits]);
+        setIsLoading(false);
 
         let totalPage = data.totalHits / perPage;
 
         if (totalPage > 1) {
-          this.setState({ isLoadMore: true });
+          setIsLoadMore(true);
         }
 
-        if (this.state.page > totalPage) {
-          this.setState({ isLoadMore: false });
+        if (page > totalPage) {
+          setIsLoadMore(false);
         }
+      } catch (error) {
+        console.log(error.message);
+        setIsError(true);
+        setIsLoading(false);
       }
-    } catch (error) {
-      this.setState({ isError: true, isLoading: false });
-    }
-  }
+    };
+    fetchImage();
+  }, [page, searchQuery]);
 
-  render() {
-    const { images, isLoading, isError, isLoadMore } = this.state;
-    return (
-      <AppStyle>
-        {isError && <ErrorMessage />}
-        <SearchBar onSubmit={this.onSubmit} />
-        {isLoading && <LoadingSpinner />}
-        <ImageGallery images={images} />
-        {isLoadMore && (
-          <LoadMoreButton handleLoadMoreButton={this.handleLoadMoreButton} />
-        )}
-      </AppStyle>
-    );
-  }
-}
+  return (
+    <AppStyle>
+      {isError && <ErrorMessage />}
+      <SearchBar onSubmit={onSubmit} />
+      {isLoading && <LoadingSpinner />}
+      <ImageGallery images={images} />
+      {isLoadMore && (
+        <LoadMoreButton handleLoadMoreButton={handleLoadMoreButton} />
+      )}
+    </AppStyle>
+  );
+};

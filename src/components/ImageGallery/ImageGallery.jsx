@@ -4,8 +4,6 @@ import { GalleryList } from './ImageGallery.styled';
 import { ImageGalleryItem } from 'components/ImageGalleryItem/ImageGalleryItem';
 
 export const ImageGallery = ({ images }) => {
-  console.log(images);
-  console.log(2 + '2');
   return (
     <>
       <GalleryList id="gallery">
